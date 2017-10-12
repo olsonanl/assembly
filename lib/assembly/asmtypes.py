@@ -11,6 +11,7 @@ class FileInfo(dict):
     def __init__(self, filename=None, shock_url=None, shock_id=None, name=None,
                  create_time=None, metadata=None, direct_url=None, keep_name=False, *args):
         dict.__init__(self, *args)
+
         if filename:
             assert os.path.exists(filename)
             filesize = os.path.getsize(filename)

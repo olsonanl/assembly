@@ -173,6 +173,9 @@ class BasePlugin(object):
     def killed(self):
         """ Check the kill queue to see if job should be killed """
 
+        if self.pmanager.kill_list is None:
+            return False
+
         my_user = self.job_data['user']
         my_jobid = self.job_data['job_id']
 

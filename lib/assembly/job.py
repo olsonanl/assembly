@@ -166,6 +166,7 @@ class ArastJob(dict):
                     for key in ['insert', 'stdev', 'platform', 'tags']:
                         if key in fs:
                             kwargs[key] = fs[key]
+                    print fs['files'], fs['type']
                     all_sets.append(asmtypes.set_factory(fs['type'],
                                                          [asmtypes.FileInfo(f) for f in fs['files']],
                                                          **kwargs))

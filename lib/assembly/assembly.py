@@ -70,6 +70,7 @@ def tar_list(outpath, file_list, tarname):
     """ Tars a file list. Attempts to find the highest common path"""
     common_path = os.path.commonprefix(file_list)
     outfile = outpath + '/tar/'
+    print "outfile=", outfile
     try: os.makedirs(outfile)
     except: pass
     outfile += tarname

@@ -201,6 +201,7 @@ def eval(x, env):
         else: # Generate Tar Name
             tar_name = '{}.tar.gz'.format('_'.join([w['module'] for w in wlinks]))
 
+        print "TAR ", tar_name
         ### Tag the tarball fileset
         tag = kwargs.get('tag')
         tags = [tag] if tag else []
@@ -210,6 +211,7 @@ def eval(x, env):
         filelist = []
         for w in wlinks:
             filelist += w.files
+        print "ATR file = ", filelist
         chain['default_output'] = asmtypes.set_factory(
             'tar', utils.tar_list(env.outpath, filelist, tar_name),
             name=tar_name, keep_name=True, tags=tags)

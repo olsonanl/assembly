@@ -1,0 +1,28 @@
+{
+  "job_id": "j2",
+  "reads": [
+    {
+      "fileinfos": [
+        {
+          "filename": "toy1.fq",
+          "local_file": "/home/olson/rast_comparison_genomes/toy1.fq"
+        },
+        {
+          "filename": "toy2.fq",
+          "local_file": "/home/olson/rast_comparison_genomes/toy2.fq"
+        }
+      ],
+      "interleaved": "false",
+      "platform": "infer",
+      "read_orientation_outward": "false",
+      "tags": [],
+      "type": "paired"
+    }
+  ],
+  "reference": [],
+  "contigs": [],
+  "pipelines": null,
+  "recipe": ["faster"],
+  "wasp_in": null,
+  "user": "olson@patricbrc.org"
+}
