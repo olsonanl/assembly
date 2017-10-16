@@ -1,15 +1,15 @@
 {
-  "job_id": "j2",
+  "job_id": "j9",
   "reads": [
     {
       "fileinfos": [
         {
           "filename": "toy1.fq",
-          "local_file": "/home/olson/rast_comparison_genomes/toy1.fq"
+          "local_file": "/home/olson/toy1.fq"
         },
         {
           "filename": "toy2.fq",
-          "local_file": "/home/olson/rast_comparison_genomes/toy2.fq"
+          "local_file": "/home/olson/toy2.fq"
         }
       ],
       "interleaved": "false",
@@ -22,7 +22,7 @@
   "reference": [],
   "contigs": [],
   "pipelines": null,
-  "recipe": ["faster"],
+  "recipe": ["auto"],
   "wasp_in": null,
   "user": "olson@patricbrc.org"
 }

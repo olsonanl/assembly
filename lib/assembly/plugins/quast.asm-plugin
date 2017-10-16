@@ -3,7 +3,7 @@ Name = quast
 Module = quast
 
 [Executables]
-executable = quast/quast.py
+executable = quast.py
 
 [Settings]
 short_name = qu

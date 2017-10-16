@@ -3,7 +3,7 @@ Name = bhammer
 Module = bhammer
 
 [Executables]
-executable = spades/bin/spades.py
+executable = spades.py
 
 [Settings]
 short_name = Bh

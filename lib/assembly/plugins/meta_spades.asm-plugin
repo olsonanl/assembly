@@ -3,7 +3,7 @@ Name = meta_spades
 Module = meta_spades
 
 [Executables]
-executable = spades/bin/spades.py
+executable = spades.py
 
 [Settings]
 short_name = Ms

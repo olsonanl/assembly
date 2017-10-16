@@ -29,7 +29,6 @@ def main():
     fh = file(args.input_description)
     input_description = json.load(fh)
     fh.close()
-
     sa = standalone.ArastStandalone(args.num_threads, os.path.abspath(args.data_path),
                                     os.path.abspath(args.bin_path), os.path.abspath(args.module_bin))
 

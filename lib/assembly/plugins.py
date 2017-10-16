@@ -746,9 +746,23 @@ class ModuleManager():
             raise Exception("File not found: %s" % filename)
 
     def get_executable_path(self, filename, verify=False):
-        guess1 = os.path.join(self.module_bin_path, filename)
-        guess2 = os.path.join(self.binpath, filename)
-        fullname = guess1 if os.path.exists(guess1) else guess2
+        #
+        # Try to find the executable in the module bin, the binpath,
+        # or our full search path (sys.path from PATH environment).
+        #
+        search_path = [self.module_bin_path, self.binpath]
+        search_path.extend(os.getenv('PATH').split(os.pathsep))
+
+        # old behavior, return path from binpath if nothing else matched
+        fullname = os.path.join(self.binpath, filename)
+
+        for p in search_path:
+            path = os.path.join(p, filename)
+            if os.path.exists(path):
+                fullname = path
+                break
+
+        print "Search for %s finds %s" % (filename, fullname)
         if verify: verify_file(fullname)
         return fullname
 

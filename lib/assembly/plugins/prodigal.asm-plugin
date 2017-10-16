@@ -3,7 +3,7 @@ Name = prodigal
 Module = prodigal
 
 [Executables]
-executable = prodigal/prodigal
+executable = prodigal
 
 [Settings]
 short_name = pd

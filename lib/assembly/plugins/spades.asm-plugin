@@ -3,7 +3,7 @@ Name = spades
 Module = spades
 
 [Executables]
-executable = spades/bin/spades.py
+executable = spades.py
 
 [Settings]
 short_name = Sp
