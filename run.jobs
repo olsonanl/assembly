@@ -1,0 +1,193 @@
+#!/usr/bin/env perl
+
+#
+# Job runner.
+#
+# Given description of a job (now just a pair of read files), construct
+# input json. (later we may ingest that).
+#
+# Start a timer to watch memory and cpu utilization, writing to the
+# given output file.
+#
+# Use Fork::Promise to fork off our jobs. We write each job's output to
+# a separate file (via IPC::Run).
+# (Looking ahead, we will want to use the tooling from AppScript.pm to
+# route that output all the way back to the app service for users to see).
+#
+# At the completion of each script, we tar/compress the generated data
+# from scratch space and save to the shared filesystem.
+#
+
+use AnyEvent;
+use Promises qw(collect);
+use Fork::Promise;
+
+use IPC::Run;
+use strict; 
+use Cwd 'abs_path';
+use File::Basename;
+use Data::Dumper;
+use File::Slurp;
+use Linux::Info::CpuStats;
+use Linux::Info::MemStats;
+use JSON::XS;
+use File::Path 'make_path';
+use IO::Handle;
+use POSIX;
+
+my @cpu_stats = qw(user system iowait idle);
+my @mem_stats = qw(memused memfree buffers cached realfree memtotal swaptotal);
+
+my $cpu = Linux::Info::CpuStats->new();
+$cpu->init;
+my $mem = Linux::Info::MemStats->new();
+
+
+my $scratch = "/scratch/olson";
+make_path($scratch);
+
+my $shared_data = "/home/olson/shared";
+make_path($shared_data);
+
+my $this_job = $ENV{SLURM_JOB_ID} // $$;
+my $stats_file = "run_stats.$this_job";
+open(STATS, ">", $stats_file) or die "Cannot write stats file $stats_file: $!";
+STATS->autoflush(1);
+print STATS join("\t", "date", "time", @cpu_stats, @mem_stats), "\n";
+
+my @pairs = @ARGV;
+
+if (@pairs % 2 != 0)
+{
+    die "Pairs are not pairs\n";
+}
+
+my $json = JSON::XS->new->pretty(1);
+
+my $jfile = "/home/olson/next.job";
+
+my @jobs;
+
+while (@pairs)
+{
+    my $p1 = shift(@pairs);
+    my $p2 = shift(@pairs);
+
+    my $j = read_file($jfile);
+    chomp $j;
+    $j++;
+    write_file($jfile, $j);
+
+    $j = "j$j";
+    print "Set up job $j\n";
+
+    my $job = {
+	job_id => $j,
+	reads => [
+	    {
+		fileinfos => [
+		    {
+			filename => basename($p1),
+			local_file => abs_path($p1),
+		    },
+		    {
+			filename => basename($p2),
+			local_file => abs_path($p2),
+		    }],
+		interleaved => 'false',
+		platform => 'infer',
+		read_orientation_outward => 'false',
+		tags => [],
+		type => 'paired',
+	    }
+	    ],
+	reference => [],
+	contigs => [],
+	pipelines => undef,
+	recipe => [ 'auto' ],
+	wasp_in => undef,
+	user => 'olson@patricbrc.org'
+};
+    my $job_json = $json->encode($job);
+    my $jfile = "job.$j";
+    write_file($jfile, $job_json);
+    push(@jobs, [$j, $jfile]);
+}
+print Dumper(\@jobs);
+
+my $data_dir = "$scratch/data";
+my $job_dir = "$scratch/job";
+make_path($data_dir, $job_dir);
+
+#
+# Set up timers.
+#
+
+my $stat_interval = 5;
+my $timer = AnyEvent->timer(after => 1, interval => $stat_interval, cb => \&log_stats);
+
+my $njobs = @jobs;
+
+my @job_promises;
+for my $job (@jobs)
+{
+    my($jid, $jfile) = @$job;
+    my $jp = Fork::Promise->new();
+    my @cmd = ("python", "server/run.py", "-n", $njobs,
+	       "-b", "/home/olson/P3/bebop/runtime/arast",
+	       "-d", $data_dir, "-j", $job_dir, "-m", "module_bin", abs_path($jfile));
+    my(@cmd) = ("/home/olson/P3/bebop/runtime/spades-3.11.1/bin/spades.py", "-t", 36,
+	"-1", "/home/olson/SRR949383_1.fastq", "-2", "/home/olson/SRR949383_2.fastq","-o", "x.out");
+    # my(@cmd) = ("sleep", "30");
+    my $promise = $jp->run(sub {
+	my $ok = IPC::Run::run(\@cmd,
+			       ">", "$job_dir/$jid.stdout",
+			       "2>", "$job_dir/$jid.stderr");
+	if (!$ok)
+	{
+	    warn "Failed running job @cmd\n";
+	    system("cat", "$job_dir/$jid.stderr");
+	}
+	print "Copying data\n";
+	my $tarfile = "$shared_data/$jid.tar.gz";
+	$ok = IPC::Run::run(["tar",
+			     "-z", "-f", $tarfile, "-c",
+			     "-C", $data_dir, "--add-file", $jid,
+			     "-C", $job_dir,
+			     "--add-file", "${jid}_report.txt", "--add-file", "$jid.stderr", "--add-file", "$jid.stdout",
+			    ]);
+	system("cp", "$job_dir/$jid.stdout", "$job_dir/$jid.stderr", $shared_data);
+	$ok or warn "Tar failed\n";
+	print "$jid finished\n";
+	 });
+    push(@job_promises, $promise);
+}
+
+my $cv = AnyEvent->condvar;
+
+collect(@job_promises)->then(
+    sub {
+	print "Jobs done running\n";
+	$cv->send("OK");
+},
+    sub {
+	$cv->croak("Error!");
+}
+    
+    );
+
+my $res = $cv->recv;
+undef $timer;
+print "Got result $res\n";
+    
+sub log_stats
+{
+    my $cstats = $cpu->get();
+    $cstats = $cstats->{cpu};
+    my $mstats = $mem->get();
+
+    my $now = time;
+    print STATS join("\t", strftime("%y-%m-%d\t%H:%M:%S", localtime $now),
+		     @$cstats{@cpu_stats},
+		     @$mstats{@mem_stats}), "\n";
+}
